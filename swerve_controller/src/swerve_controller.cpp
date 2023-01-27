@@ -50,7 +50,10 @@ namespace swerve_controller
           max_steering_angle_(M_PI),
           cmd_vel_timeout_(0.5),
           base_frame_id_("base_link"),
-          enable_odom_tf_(true)
+          enable_odom_tf_(true),
+          odom_frame_("odom"),
+          odom_topic_name_("odom"),
+          command_topic_name_("cmd_vel")
     {
     }
 
@@ -103,8 +106,20 @@ namespace swerve_controller
         ROS_INFO_STREAM_NAMED(name_, "Velocity commands will be considered old if they are "
                                          << "older than " << cmd_vel_timeout_ << "s.");
 
+        // Get command topic name
+        controller_nh.param("command_topic_name", command_topic_name_, command_topic_name_);
+        ROS_INFO_STREAM_NAMED(name_, "Command topic name set to " << command_topic_name_);
+
         controller_nh.param("base_frame_id", base_frame_id_, base_frame_id_);
         ROS_INFO_STREAM_NAMED(name_, "Base frame_id set to " << base_frame_id_);
+
+        // Get odometry tf frame
+        controller_nh.param("odom_frame", odom_frame_, odom_frame_);
+        ROS_INFO_STREAM_NAMED(name_, "Odometry tf frame set to " << odom_frame_);
+
+        // Get odometry published topic name
+        controller_nh.param("odom_topic_name", odom_topic_name_, odom_topic_name_);
+        ROS_INFO_STREAM_NAMED(name_, "Odometry topic name set to " << odom_topic_name_);
 
         controller_nh.param("enable_odom_tf", enable_odom_tf_, enable_odom_tf_);
         ROS_INFO_STREAM_NAMED(name_, "Publishing to tf is "
@@ -231,7 +246,7 @@ namespace swerve_controller
         rh_steering_joint_ = pos_joint_hw->getHandle(rh_steering_name); // throws on failure
 
         // Subscribe to Twist messages
-        sub_command_ = controller_nh.subscribe("cmd_vel", 1,
+        sub_command_ = controller_nh.subscribe(command_topic_name_, 1,
                                                &SwerveController::cmdVelCallback, this);
         return true;
     }
@@ -481,8 +496,8 @@ namespace swerve_controller
 
         // Setup odometry realtime publisher + odom message constant fields
         odom_pub_.reset(new realtime_tools::RealtimePublisher<nav_msgs::Odometry>(controller_nh,
-                                                                                  "odom", 100));
-        odom_pub_->msg_.header.frame_id = "odom";
+                                                                                  odom_topic_name_, 100));
+        odom_pub_->msg_.header.frame_id = odom_frame_;
         odom_pub_->msg_.child_frame_id = base_frame_id_;
         odom_pub_->msg_.pose.pose.position.z = 0;
         odom_pub_->msg_.pose.covariance =
@@ -509,7 +524,7 @@ namespace swerve_controller
         tf_odom_pub_->msg_.transforms.resize(1);
         tf_odom_pub_->msg_.transforms[0].transform.translation.z = 0.0;
         tf_odom_pub_->msg_.transforms[0].child_frame_id = base_frame_id_;
-        tf_odom_pub_->msg_.transforms[0].header.frame_id = "odom";
+        tf_odom_pub_->msg_.transforms[0].header.frame_id = odom_frame_;
     }
 
 } // namespace swerve_controller

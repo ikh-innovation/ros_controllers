@@ -148,6 +148,15 @@ namespace swerve_controller
         /// Whether to publish odometry to tf or not:
         bool enable_odom_tf_;
 
+        /// Frame to use for odometry tf publishing:
+        std::string odom_frame_;
+
+        /// Odometry topic name
+        std::string odom_topic_name_;
+
+        /// Command topic name
+        std::string command_topic_name_;
+
         /// Speed limiters:
         CommandTwist last1_cmd_;
         CommandTwist last0_cmd_;
