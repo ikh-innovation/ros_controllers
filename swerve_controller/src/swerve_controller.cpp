@@ -479,10 +479,10 @@ namespace swerve_controller
                                               << ", Lin y: " << command_struct_twist_.lin_y
                                               << ", Stamp: " << command_struct_twist_.stamp);
         }
-        else
-        {
-            ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
-        }
+        // else
+        // {
+        //     ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
+        // }
     }
 
     void SwerveController::setOdomPubFields(ros::NodeHandle &root_nh,

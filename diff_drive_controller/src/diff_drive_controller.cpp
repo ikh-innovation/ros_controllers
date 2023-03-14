@@ -554,10 +554,10 @@ namespace diff_drive_controller{
                              << "Lin: "   << command_struct_.lin << ", "
                              << "Stamp: " << command_struct_.stamp);
     }
-    else
-    {
-      ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
-    }
+    // else
+    // {
+    //   ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
+    // }
   }
 
   bool DiffDriveController::getWheelNames(ros::NodeHandle& controller_nh,
