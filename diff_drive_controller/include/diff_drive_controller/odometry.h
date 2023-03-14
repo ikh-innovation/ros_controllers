@@ -87,6 +87,14 @@ namespace diff_drive_controller
     bool update(double left_pos, double right_pos, const ros::Time &time);
 
     /**
+     * \brief Updates the odometry values with the newest values from the previous controller
+     * \param new_x  New x position [m]
+     * \param new_y  New y position [m] 
+     * \param new_yaw  New yaw value [rad]
+     */
+    void updateOnSwitch(double new_x, double new_y, double new_yaw);
+    
+    /**
      * \brief Updates the odometry class with latest velocity command
      * \param linear  Linear velocity [m/s]
      * \param angular Angular velocity [rad/s]
@@ -198,6 +206,9 @@ namespace diff_drive_controller
     /// Previou wheel position/state [rad]:
     double left_wheel_old_pos_;
     double right_wheel_old_pos_;
+
+    bool first_time_after_switch_ {false}; 
+
 
     /// Rolling mean accumulators for the linar and angular velocities:
     size_t velocity_rolling_window_size_;

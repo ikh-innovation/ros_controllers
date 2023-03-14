@@ -83,6 +83,15 @@ class Odometry
                 const double& rh_speed, const double& lf_steering, const double& rf_steering,
                 const double& lh_steering, const double& rh_steering, const ros::Time &time);
 
+
+    /**
+     * \brief Updates the odometry values with the newest values from the previous controller
+     * \param new_x  New x position [m]
+     * \param new_y  New y position [m] 
+     * \param new_yaw  New yaw value [rad]
+     */
+    void updateOnSwitch(double new_x, double new_y, double new_yaw);
+    
     /**
      * \brief heading getter
      * \return heading [rad]

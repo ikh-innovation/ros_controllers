@@ -234,6 +234,9 @@ namespace diff_drive_controller{
     
     std::shared_ptr<ReconfigureServer> dyn_reconf_server_;
 
+    // node handle to use when storing odometry values while switching controllers
+    ros::NodeHandle switching_nh; 
+
   private:
     /**
      * \brief Brakes the wheels, i.e. sets the velocity to 0

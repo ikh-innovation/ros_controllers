@@ -163,6 +163,10 @@ namespace swerve_controller
         SpeedLimiter limiter_lin_;
         SpeedLimiter limiter_ang_;
 
+        // node handle to use when storing odometry values while switching controllers
+        ros::NodeHandle switching_nh;
+
+
     private:
         void updateOdometry(const ros::Time &time);
 

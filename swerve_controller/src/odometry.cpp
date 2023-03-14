@@ -108,6 +108,15 @@ namespace swerve_controller
         return true;
     }
 
+
+    void Odometry::updateOnSwitch(double new_x, double new_y, double new_yaw)
+    {
+        x_ = new_x;
+        y_ = new_y;
+        heading_ = new_yaw;
+    }
+
+
     void Odometry::setWheelParams(double steering_track, double wheel_radius, double wheel_base)
     {
         steering_track_   = steering_track;

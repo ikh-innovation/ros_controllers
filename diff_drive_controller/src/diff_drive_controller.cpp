@@ -499,7 +499,12 @@ namespace diff_drive_controller{
   void DiffDriveController::starting(const ros::Time& time)
   {
     brake();
-
+    ROS_INFO_STREAM("Starting diff_drive controller ...");
+    double last_x, last_y, last_yaw;
+    switching_nh.getParam("last_x", last_x);
+    switching_nh.getParam("last_y", last_y);
+    switching_nh.getParam("last_yaw", last_yaw);
+    odometry_.updateOnSwitch(last_x, last_y, last_yaw);
     // Register starting time used to keep fixed rate
     last_state_publish_time_ = time;
     time_previous_ = time;
@@ -509,7 +514,11 @@ namespace diff_drive_controller{
 
   void DiffDriveController::stopping(const ros::Time& /*time*/)
   {
+    ROS_INFO_STREAM("Stopping diff_drive controller ...");
     brake();
+    switching_nh.setParam("last_x", odometry_.getX());
+    switching_nh.setParam("last_y", odometry_.getY());
+    switching_nh.setParam("last_yaw", odometry_.getHeading());
   }
 
   void DiffDriveController::brake()
