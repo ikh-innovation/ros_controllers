@@ -386,10 +386,10 @@ namespace swerve_controller
         }
 
         // Invert wheel speed or brake if steering angle exceeds desired limits
-        if (!clipSteeringAngle(lf_steering, lf_speed) ||
-            !clipSteeringAngle(rf_steering, rf_speed) ||
-            !clipSteeringAngle(lh_steering, lh_speed) ||
-            !clipSteeringAngle(rh_steering, rh_speed))
+        if (!clipSteeringAngle(lf_steering, lf_speed, lf_clipped_) ||
+            !clipSteeringAngle(rf_steering, rf_speed, rf_clipped_) ||
+            !clipSteeringAngle(lh_steering, lh_speed, lh_clipped_) ||
+            !clipSteeringAngle(rh_steering, rh_speed, rh_clipped_))
         {
             brake();
             return;
@@ -426,12 +426,13 @@ namespace swerve_controller
         }
     }
 
-    bool SwerveController::clipSteeringAngle(double &steering, double &speed)
+    bool SwerveController::clipSteeringAngle(double &steering, double &speed, int &is_clipped)
     {
-        if (steering > max_steering_angle_)
+        if (steering > max_steering_angle_) 
         {
             if (steering - M_PI > min_steering_angle_)
             {
+                is_clipped = -1;
                 steering -= M_PI;
                 speed = -speed;
                 return true;
@@ -440,12 +441,12 @@ namespace swerve_controller
             {
                 return false;
             }
-        }
-
-        if (steering < min_steering_angle_)
+        }        
+        else if (steering < min_steering_angle_)
         {
             if (steering + M_PI < max_steering_angle_)
             {
+                is_clipped = 1;
                 steering += M_PI;
                 speed = -speed;
                 return true;
@@ -455,7 +456,17 @@ namespace swerve_controller
                 return false;
             }
         }
-
+        else if ((steering < (min_steering_angle_ + M_PI)) && (steering > (max_steering_angle_ - M_PI)) && (fabs(is_clipped) == 1))
+        {
+            is_clipped = 0;
+            return true;
+        }
+        else if (  (steering > min_steering_angle_) && (steering < max_steering_angle_) && (fabs(is_clipped) == 1)  )
+        {
+                steering = steering + is_clipped*M_PI;
+                speed = -speed;
+                return true;
+        }
         return true;
     }
 

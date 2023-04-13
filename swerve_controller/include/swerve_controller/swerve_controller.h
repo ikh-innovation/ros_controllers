@@ -166,6 +166,13 @@ namespace swerve_controller
         // node handle to use when storing odometry values while switching controllers
         ros::NodeHandle switching_nh;
 
+        //clipping indication for steering joints
+        int lf_clipped_ {0};
+        int rf_clipped_ {0};
+        int lh_clipped_ {0};
+        int rh_clipped_ {0};
+        
+
 
     private:
         void updateOdometry(const ros::Time &time);
@@ -174,7 +181,7 @@ namespace swerve_controller
 
         void brake();
 
-        bool clipSteeringAngle(double &steering, double &speed);
+        bool clipSteeringAngle(double &steering, double &speed, int &is_clipped);
 
         void cmdVelCallback(const geometry_msgs::Twist &command);
 
