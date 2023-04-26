@@ -53,7 +53,8 @@ namespace swerve_controller
           enable_odom_tf_(true),
           odom_frame_("odom"),
           odom_topic_name_("odom"),
-          command_topic_name_("cmd_vel")
+          command_topic_name_("cmd_vel"),
+          debug_single_wheel_(false)
     {
     }
 
@@ -65,29 +66,60 @@ namespace swerve_controller
         std::string complete_ns = controller_nh.getNamespace();
         std::size_t id = complete_ns.find_last_of("/");
         name_ = complete_ns.substr(id + 1);
+        
+        param_nh = controller_nh;
+        param_timer_ = controller_nh.createTimer(ros::Duration(1.0), &SwerveController::timerCallback, this);
 
         // Get wheel joint names from the parameter server
         std::string lf_wheel_name, rf_wheel_name, lh_wheel_name, rh_wheel_name;
-        if (!controller_nh.param("lf_wheel", lf_wheel_name, lf_wheel_name) ||
-            !controller_nh.param("rf_wheel", rf_wheel_name, rf_wheel_name) ||
-            !controller_nh.param("lh_wheel", lh_wheel_name, lh_wheel_name) ||
-            !controller_nh.param("rh_wheel", rh_wheel_name, rh_wheel_name))
+
+
+
+        if (!debug_single_wheel_)
         {
-            ROS_ERROR_STREAM_NAMED(name_,
-                                   "Couldn't retrieve wheel joint params !");
-            return false;
+            if (!controller_nh.param("lf_wheel", lf_wheel_name, lf_wheel_name) ||
+                !controller_nh.param("rf_wheel", rf_wheel_name, rf_wheel_name) ||
+                !controller_nh.param("lh_wheel", lh_wheel_name, lh_wheel_name) ||
+                !controller_nh.param("rh_wheel", rh_wheel_name, rh_wheel_name))
+            {
+                ROS_ERROR_STREAM_NAMED(name_,
+                                    "Couldn't retrieve wheel joint params !");
+                return false;
+            }
         }
+        else
+        {
+            if (!controller_nh.param("lf_wheel", lf_wheel_name, lf_wheel_name))
+            {
+                ROS_ERROR_STREAM_NAMED(name_,
+                                    "Couldn't retrieve wheel joint param !");
+                return false;
+            }
+        }
+
 
         // Get steering joint names from the parameter server
         std::string lf_steering_name, rf_steering_name, lh_steering_name, rh_steering_name;
-        if (!controller_nh.param("lf_steering", lf_steering_name, lf_steering_name) ||
-            !controller_nh.param("rf_steering", rf_steering_name, rf_steering_name) ||
-            !controller_nh.param("lh_steering", lh_steering_name, lh_steering_name) ||
-            !controller_nh.param("rh_steering", rh_steering_name, rh_steering_name))
+        if (!debug_single_wheel_)
         {
-            ROS_ERROR_STREAM_NAMED(name_,
-                                   "Couldn't retrieve steering joint params !");
-            return false;
+            if (!controller_nh.param("lf_steering", lf_steering_name, lf_steering_name) ||
+                !controller_nh.param("rf_steering", rf_steering_name, rf_steering_name) ||
+                !controller_nh.param("lh_steering", lh_steering_name, lh_steering_name) ||
+                !controller_nh.param("rh_steering", rh_steering_name, rh_steering_name))
+            {
+                ROS_ERROR_STREAM_NAMED(name_,
+                                    "Couldn't retrieve steering joint params !");
+                return false;
+            }
+        }
+        else
+        {
+            if (!controller_nh.param("lf_steering", lf_steering_name, lf_steering_name))
+            {
+                ROS_ERROR_STREAM_NAMED(name_,
+                                    "Couldn't retrieve steering joint param !");
+                return false;
+            }
         }
 
         // Get maximal steering angle from the parameter server
@@ -123,7 +155,11 @@ namespace swerve_controller
 
         controller_nh.param("enable_odom_tf", enable_odom_tf_, enable_odom_tf_);
         ROS_INFO_STREAM_NAMED(name_, "Publishing to tf is "
-                                         << (enable_odom_tf_ ? "enabled" : "disabled"));
+                                         << (enable_odom_tf_ ? "enabled" : "disabled"));        
+        
+        controller_nh.param("debug_single_wheel", debug_single_wheel_, debug_single_wheel_);
+        ROS_INFO_STREAM_NAMED(name_, "Debugging a single wheel is "
+                                         << (debug_single_wheel_ ? "enabled" : "disabled"));
 
         // Get velocity and acceleration limits from the parameter server
         controller_nh.param("linear/x/has_velocity_limits",
@@ -168,7 +204,7 @@ namespace swerve_controller
         bool lookup_track = !controller_nh.getParam("track", track_);
         bool lookup_wheel_steering_y_offset = !controller_nh.getParam("wheel_steering_y_offset",
                                                                       wheel_steering_y_offset_);
-        bool lookup_wheel_radius = !controller_nh.getParam("wheel_radius", wheel_radius_);
+        bool lookup_wheel_radius = !controller_nh.getParamCached("wheel_radius", wheel_radius_);
         bool lookup_wheel_base = !controller_nh.getParam("wheel_base", wheel_base_);
 
         if (lookup_track || lookup_wheel_steering_y_offset ||
@@ -225,26 +261,39 @@ namespace swerve_controller
 
         // Get the wheel joint object to use in the realtime loop
         ROS_INFO_STREAM_NAMED(name_, "Adding LF wheel with joint name: "
-                                         << lf_wheel_name
-                                         << ", RF wheel with joint name: " << rf_wheel_name
-                                         << ", LH wheel with joint name: " << lh_wheel_name
-                                         << ", RH wheel with joint name: " << rh_wheel_name);
+                                         << lf_wheel_name);
+        if (!debug_single_wheel_) 
+        {
+            ROS_INFO_STREAM_NAMED(name_, "Adding also RF wheel with joint name: " << rf_wheel_name
+                                                << ", LH wheel with joint name: " << lh_wheel_name
+                                                << ", RH wheel with joint name: " << rh_wheel_name);
+        }
+
         lf_wheel_joint_ = vel_joint_hw->getHandle(lf_wheel_name); // throws on failure
-        rf_wheel_joint_ = vel_joint_hw->getHandle(rf_wheel_name); // throws on failure
-        lh_wheel_joint_ = vel_joint_hw->getHandle(lh_wheel_name); // throws on failure
-        rh_wheel_joint_ = vel_joint_hw->getHandle(rh_wheel_name); // throws on failure
+        if (!debug_single_wheel_)
+        {
+            rf_wheel_joint_ = vel_joint_hw->getHandle(rf_wheel_name); // throws on failure
+            lh_wheel_joint_ = vel_joint_hw->getHandle(lh_wheel_name); // throws on failure
+            rh_wheel_joint_ = vel_joint_hw->getHandle(rh_wheel_name); // throws on failure
+        }
 
         // Get the steering joint object to use in the realtime loop
         ROS_INFO_STREAM_NAMED(name_, "Adding LF steering with joint name: "
-                                         << lf_steering_name
-                                         << ", RF steering with joint name: " << rf_steering_name
-                                         << ", LH steering with joint name: " << lh_steering_name
-                                         << ", RH steering with joint name: " << rh_steering_name);
-        lf_steering_joint_ = pos_joint_hw->getHandle(lf_steering_name); // throws on failure
-        rf_steering_joint_ = pos_joint_hw->getHandle(rf_steering_name); // throws on failure
-        lh_steering_joint_ = pos_joint_hw->getHandle(lh_steering_name); // throws on failure
-        rh_steering_joint_ = pos_joint_hw->getHandle(rh_steering_name); // throws on failure
+                                         << lf_steering_name);
+        if (!debug_single_wheel_) 
+        {
+            ROS_INFO_STREAM_NAMED(name_, "Adding also RF steering with joint name: " << rf_steering_name
+                                                << ", LH steering with joint name: " << lh_steering_name
+                                                << ", RH steering with joint name: " << rh_steering_name);
+        }
 
+        lf_steering_joint_ = pos_joint_hw->getHandle(lf_steering_name); // throws on failure
+        if (!debug_single_wheel_)
+        {
+            rf_steering_joint_ = pos_joint_hw->getHandle(rf_steering_name); // throws on failure
+            lh_steering_joint_ = pos_joint_hw->getHandle(lh_steering_name); // throws on failure
+            rh_steering_joint_ = pos_joint_hw->getHandle(rh_steering_name); // throws on failure
+        }
         // Subscribe to Twist messages
         sub_command_ = controller_nh.subscribe(command_topic_name_, 1,
                                                &SwerveController::cmdVelCallback, this);
@@ -253,8 +302,24 @@ namespace swerve_controller
 
     void SwerveController::update(const ros::Time &time, const ros::Duration &period)
     {
-        updateOdometry(time);
+        if (!debug_single_wheel_) 
+        {
+            updateOdometry(time);
+        }
         updateCommand(time, period);
+    }
+
+    void SwerveController::timerCallback(const ros::TimerEvent& event)
+    {
+        double new_wheel_radius;
+        param_nh.getParamCached("wheel_radius", new_wheel_radius); 
+
+        if (new_wheel_radius != wheel_radius_)
+        {
+            wheel_radius_ = new_wheel_radius;
+            ROS_INFO_STREAM_NAMED(name_, "New wheel radius is : " << wheel_radius_ );
+            odometry_.setWheelParams(track_ - 2 * wheel_steering_y_offset_, wheel_radius_, wheel_base_);
+        }
     }
 
     void SwerveController::starting(const ros::Time &time)
@@ -288,6 +353,7 @@ namespace swerve_controller
         const double rf_speed = rf_wheel_joint_->getVelocity();
         const double lh_speed = lh_wheel_joint_->getVelocity();
         const double rh_speed = rh_wheel_joint_->getVelocity();
+        
         if (std::isnan(lf_speed) || std::isnan(rf_speed) ||
             std::isnan(lh_speed) || std::isnan(rh_speed))
             return;
@@ -396,33 +462,65 @@ namespace swerve_controller
         }
 
         // Set wheels velocities
-        if (lf_wheel_joint_ && rf_wheel_joint_ && lh_wheel_joint_ && rh_wheel_joint_)
+        if (!debug_single_wheel_)
         {
-            lf_wheel_joint_->setCommand(lf_speed);
-            rf_wheel_joint_->setCommand(rf_speed);
-            lh_wheel_joint_->setCommand(lh_speed);
-            rh_wheel_joint_->setCommand(rh_speed);
+            if (lf_wheel_joint_ && rf_wheel_joint_ && lh_wheel_joint_ && rh_wheel_joint_)
+            {
+                lf_wheel_joint_->setCommand(lf_speed);
+                rf_wheel_joint_->setCommand(rf_speed);
+                lh_wheel_joint_->setCommand(lh_speed);
+                rh_wheel_joint_->setCommand(rh_speed);
+            }
+        }
+        else
+        {
+            if (lf_wheel_joint_)
+            {
+                lf_wheel_joint_->setCommand(lf_speed);
+            }
         }
 
+
         // Set wheels steering angles
-        if (lf_steering_joint_ && rf_steering_joint_ && lh_steering_joint_ && rh_steering_joint_)
+
+        if (!debug_single_wheel_)
         {
-            lf_steering_joint_->setCommand(lf_steering);
-            rf_steering_joint_->setCommand(rf_steering);
-            lh_steering_joint_->setCommand(lh_steering);
-            rh_steering_joint_->setCommand(rh_steering);
+            if (lf_steering_joint_ && rf_steering_joint_ && lh_steering_joint_ && rh_steering_joint_)
+            {
+                lf_steering_joint_->setCommand(lf_steering);
+                rf_steering_joint_->setCommand(rf_steering);
+                lh_steering_joint_->setCommand(lh_steering);
+                rh_steering_joint_->setCommand(rh_steering);
+            }
+        }
+        else
+        {
+            if (lf_steering_joint_)
+            {
+                lf_steering_joint_->setCommand(lf_steering);
+            }
         }
     }
 
     void SwerveController::brake()
     {
         // Set wheels velocities
-        if (lf_wheel_joint_ && rf_wheel_joint_ && lh_wheel_joint_ && rh_wheel_joint_)
+        if (!debug_single_wheel_)
         {
-            lf_wheel_joint_->setCommand(0.0);
-            rf_wheel_joint_->setCommand(0.0);
-            lh_wheel_joint_->setCommand(0.0);
-            rh_wheel_joint_->setCommand(0.0);
+            if (lf_wheel_joint_ && rf_wheel_joint_ && lh_wheel_joint_ && rh_wheel_joint_)
+            {
+                lf_wheel_joint_->setCommand(0.0);
+                rf_wheel_joint_->setCommand(0.0);
+                lh_wheel_joint_->setCommand(0.0);
+                rh_wheel_joint_->setCommand(0.0);
+            }
+        }
+        else
+        {
+            if (lf_wheel_joint_)
+            {
+                lf_wheel_joint_->setCommand(0.0);
+            }
         }
     }
 

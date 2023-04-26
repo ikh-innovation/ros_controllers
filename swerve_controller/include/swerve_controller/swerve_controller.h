@@ -88,6 +88,10 @@ namespace swerve_controller
     private:
         std::string name_;
 
+        // Node handle and timer to check for changes in wheel radius
+        ros::NodeHandle param_nh{};
+        ros::Timer param_timer_ ;
+
         /// Odometry related:
         ros::Duration publish_period_;
         ros::Time last_state_publish_time_;
@@ -147,6 +151,9 @@ namespace swerve_controller
 
         /// Whether to publish odometry to tf or not:
         bool enable_odom_tf_;
+        
+        /// Whether to publish commands to a single wheel for debug purposes:
+        bool debug_single_wheel_;
 
         /// Frame to use for odometry tf publishing:
         std::string odom_frame_;
@@ -175,6 +182,8 @@ namespace swerve_controller
 
 
     private:
+        void timerCallback(const ros::TimerEvent &event);
+
         void updateOdometry(const ros::Time &time);
 
         void updateCommand(const ros::Time &time, const ros::Duration &period);
