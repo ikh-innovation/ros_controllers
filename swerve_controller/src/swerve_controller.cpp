@@ -418,6 +418,13 @@ namespace swerve_controller
             return;
         }
 
+        // If velocity is zero, just brake the wheels without steering them to 0 angle.
+        if ((curr_cmd.lin_x == 0.0) && (curr_cmd.lin_y == 0.0) && (curr_cmd.ang == 0.0))
+        {
+            brake();
+            return;            
+        }
+
         // Create velocities and position variables
         const double cmd_dt(period.toSec());
         const double steering_track = track_ - 2 * wheel_steering_y_offset_;
@@ -451,6 +458,17 @@ namespace swerve_controller
             rh_steering = atan2(a, d);
         }
 
+        // Select smallest revolution angle to minimize turns
+        double lf_current_angle = lf_steering_joint_->getPosition();
+        double rf_current_angle = rf_steering_joint_->getPosition();
+        double lh_current_angle = lh_steering_joint_->getPosition();
+        double rh_current_angle = rh_steering_joint_->getPosition();
+        
+        minimizeTurn(lf_steering, lf_current_angle, lf_speed);
+        minimizeTurn(rf_steering, rf_current_angle, rf_speed);
+        minimizeTurn(lh_steering, lh_current_angle, lh_speed);
+        minimizeTurn(rh_steering, rh_current_angle, rh_speed);
+        
         // Invert wheel speed or brake if steering angle exceeds desired limits
         if (!clipSteeringAngle(lf_steering, lf_speed, lf_clipped_) ||
             !clipSteeringAngle(rf_steering, rf_speed, rf_clipped_) ||
@@ -466,17 +484,34 @@ namespace swerve_controller
         {
             if (lf_wheel_joint_ && rf_wheel_joint_ && lh_wheel_joint_ && rh_wheel_joint_)
             {
-                lf_wheel_joint_->setCommand(lf_speed);
-                rf_wheel_joint_->setCommand(rf_speed);
-                lh_wheel_joint_->setCommand(lh_speed);
-                rh_wheel_joint_->setCommand(rh_speed);
+                if (checkError(lf_steering, lf_current_angle) && 
+                    checkError(rf_steering, rf_current_angle) && 
+                    checkError(lh_steering, lh_current_angle) &&
+                    checkError(rh_steering, rh_current_angle))
+                {
+                    lf_wheel_joint_->setCommand(-lf_speed);
+                    rf_wheel_joint_->setCommand(rf_speed);
+                    lh_wheel_joint_->setCommand(-lh_speed);
+                    rh_wheel_joint_->setCommand(rh_speed);
+                }
+                else
+                {
+                    lf_wheel_joint_->setCommand(0.0);
+                    rf_wheel_joint_->setCommand(0.0);
+                    lh_wheel_joint_->setCommand(0.0);
+                    rh_wheel_joint_->setCommand(0.0); 
+                }
+
             }
         }
         else
         {
             if (lf_wheel_joint_)
             {
-                lf_wheel_joint_->setCommand(lf_speed);
+                if (checkError(lf_steering, lf_current_angle))
+                {
+                    lf_wheel_joint_->setCommand(lf_speed);
+                }
             }
         }
 
@@ -522,6 +557,30 @@ namespace swerve_controller
                 lf_wheel_joint_->setCommand(0.0);
             }
         }
+    }
+
+    void SwerveController::minimizeTurn(double &new_angle, double &current_angle, double &speed)
+    {
+        if (fabs(new_angle - current_angle)>(M_PI/2.0))
+        {
+            new_angle -= M_PI;
+            speed = -speed;
+            // Wrap angle in case it got out of the [-pi,pi] range
+            if (new_angle < - M_PI)
+            {
+                new_angle += 2*M_PI;
+            }
+            else if (new_angle > M_PI)
+            {
+                new_angle -= 2*M_PI;
+            }
+        }
+    }
+
+    bool SwerveController::checkError(double &target_angle, double &current_angle)
+    {
+        double threshold = 0.05;
+        return (fabs(target_angle - current_angle) < threshold);
     }
 
     bool SwerveController::clipSteeringAngle(double &steering, double &speed, int &is_clipped)

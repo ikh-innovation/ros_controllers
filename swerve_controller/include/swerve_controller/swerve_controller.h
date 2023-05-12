@@ -192,6 +192,10 @@ namespace swerve_controller
 
         bool clipSteeringAngle(double &steering, double &speed, int &is_clipped);
 
+        void minimizeTurn(double &new_angle, double &current_angle, double &speed);
+
+        bool checkError(double &target_angle, double &current_angle);
+
         void cmdVelCallback(const geometry_msgs::Twist &command);
 
         bool getPhysicalParams(ros::NodeHandle &controller_nh);
