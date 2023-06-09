@@ -489,9 +489,9 @@ namespace swerve_controller
                     checkError(lh_steering, lh_current_angle) &&
                     checkError(rh_steering, rh_current_angle))                
                 {
-                    lf_wheel_joint_->setCommand(-lf_speed);
+                    lf_wheel_joint_->setCommand(lf_speed);
                     rf_wheel_joint_->setCommand(rf_speed);
-                    lh_wheel_joint_->setCommand(-lh_speed);
+                    lh_wheel_joint_->setCommand(lh_speed);
                     rh_wheel_joint_->setCommand(rh_speed);
                 }
                 else
