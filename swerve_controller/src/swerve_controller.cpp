@@ -356,7 +356,7 @@ namespace swerve_controller
         
         if (std::isnan(lf_speed) || std::isnan(rf_speed) ||
             std::isnan(lh_speed) || std::isnan(rh_speed))
-            return;
+            return;        
 
         const double lf_steering = lf_steering_joint_->getPosition();
         const double rf_steering = rf_steering_joint_->getPosition();
@@ -487,7 +487,7 @@ namespace swerve_controller
                 if (checkError(lf_steering, lf_current_angle) && 
                     checkError(rf_steering, rf_current_angle) && 
                     checkError(lh_steering, lh_current_angle) &&
-                    checkError(rh_steering, rh_current_angle))
+                    checkError(rh_steering, rh_current_angle))                
                 {
                     lf_wheel_joint_->setCommand(-lf_speed);
                     rf_wheel_joint_->setCommand(rf_speed);
@@ -579,7 +579,7 @@ namespace swerve_controller
 
     bool SwerveController::checkError(double &target_angle, double &current_angle)
     {
-        double threshold = 0.05;
+        double threshold = 0.5;
         return (fabs(target_angle - current_angle) < threshold);
     }
 
