@@ -579,7 +579,7 @@ namespace swerve_controller
 
     bool SwerveController::checkError(double &target_angle, double &current_angle)
     {
-        double threshold = 0.5;
+        double threshold = 1.5;
         return (fabs(target_angle - current_angle) < threshold);
     }
 
@@ -612,17 +612,6 @@ namespace swerve_controller
             {
                 return false;
             }
-        }
-        else if ((steering < (min_steering_angle_ + M_PI)) && (steering > (max_steering_angle_ - M_PI)) && (fabs(is_clipped) == 1))
-        {
-            is_clipped = 0;
-            return true;
-        }
-        else if (  (steering > min_steering_angle_) && (steering < max_steering_angle_) && (fabs(is_clipped) == 1)  )
-        {
-                steering = steering + is_clipped*M_PI;
-                speed = -speed;
-                return true;
         }
         return true;
     }
