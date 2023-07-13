@@ -24,7 +24,7 @@
 	<depend>realtime_tools</depend>
 	<depend>tf</depend>
 	<depend>urdf_geometry_parser</depend>
-
+	<depend>dynamic_reconfigure</depend>
 	<test_depend>rosgraph_msgs</test_depend>
 	<test_depend>rostest</test_depend>
 	<test_depend>std_srvs</test_depend>

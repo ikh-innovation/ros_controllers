@@ -297,11 +297,32 @@ namespace swerve_controller
         // Subscribe to Twist messages
         sub_command_ = controller_nh.subscribe(command_topic_name_, 1,
                                                &SwerveController::cmdVelCallback, this);
+        
+        
+        // Initialize dynamic parameters
+        DynamicParams dynamic_params;
+        dynamic_params.angle_threshold  = angle_threshold_;
+        dynamic_params.enable_odom_tf = enable_odom_tf_;
+
+        dynamic_params_.writeFromNonRT(dynamic_params);
+
+        // Initialize dynamic_reconfigure server
+        SwerveControllerConfig config;
+        config.angle_threshold  = angle_threshold_;
+        config.enable_odom_tf = enable_odom_tf_;
+
+        dyn_reconf_server_ = std::make_shared<ReconfigureServer>(controller_nh);
+        dyn_reconf_server_->updateConfig(config);
+        dyn_reconf_server_->setCallback(boost::bind(&SwerveController::reconfCallback, this, _1, _2));
+            
         return true;
     }
 
     void SwerveController::update(const ros::Time &time, const ros::Duration &period)
     {
+        // update parameter from dynamic reconf
+        updateDynamicParams();
+
         if (!debug_single_wheel_) 
         {
             updateOdometry(time);
@@ -320,6 +341,23 @@ namespace swerve_controller
             ROS_INFO_STREAM_NAMED(name_, "New wheel radius is : " << wheel_radius_ );
             odometry_.setWheelParams(track_ - 2 * wheel_steering_y_offset_, wheel_radius_, wheel_base_);
         }
+    }
+
+    void SwerveController::reconfCallback(SwerveControllerConfig& config, uint32_t /*level*/)
+    {
+        DynamicParams dynamic_params;
+        dynamic_params.angle_threshold  = config.angle_threshold;
+        dynamic_params.enable_odom_tf = config.enable_odom_tf;
+        dynamic_params_.writeFromNonRT(dynamic_params);
+        ROS_INFO_STREAM_NAMED(name_, "Dynamic Reconfigure:\n" << dynamic_params);
+    }
+
+    void SwerveController::updateDynamicParams()
+    {
+        // Retreive dynamic params:
+        const DynamicParams dynamic_params = *(dynamic_params_.readFromRT());
+        angle_threshold_  = dynamic_params.angle_threshold;
+        enable_odom_tf_ = dynamic_params.enable_odom_tf;
     }
 
     void SwerveController::starting(const ros::Time &time)
@@ -579,8 +617,7 @@ namespace swerve_controller
 
     bool SwerveController::checkError(double &target_angle, double &current_angle)
     {
-        double threshold = 1.5;
-        return (fabs(target_angle - current_angle) < threshold);
+        return (fabs(target_angle - current_angle) < angle_threshold_);
     }
 
     bool SwerveController::clipSteeringAngle(double &steering, double &speed, int &is_clipped)

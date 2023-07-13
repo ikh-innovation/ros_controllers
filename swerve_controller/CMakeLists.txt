@@ -8,10 +8,13 @@ find_package(catkin REQUIRED COMPONENTS
     nav_msgs
     realtime_tools
     robot_state_publisher
+    dynamic_reconfigure
     roslint
     realtime_tools
     tf
     urdf_geometry_parser)
+
+generate_dynamic_reconfigure_options(cfg/SwerveController.cfg)
 
 # Create the package
 catkin_package(

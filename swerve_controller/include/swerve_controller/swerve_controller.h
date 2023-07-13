@@ -45,6 +45,7 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <urdf_geometry_parser/urdf_geometry_parser.h>
 #include <pluginlib/class_list_macros.hpp>
+#include <dynamic_reconfigure/server.h>
 
 #include <nav_msgs/Odometry.h>
 #include <tf/tfMessage.h>
@@ -55,6 +56,8 @@
 
 #include <swerve_controller/odometry.h>
 #include <swerve_controller/speed_limiter.h>
+#include <swerve_controller/SwerveControllerConfig.h>
+
 
 namespace swerve_controller
 {
@@ -170,16 +173,48 @@ namespace swerve_controller
         SpeedLimiter limiter_lin_;
         SpeedLimiter limiter_ang_;
 
-        // node handle to use when storing odometry values while switching controllers
+        /// Node handle to use when storing odometry values while switching controllers
         ros::NodeHandle switching_nh;
 
-        //clipping indication for steering joints
+        /// Clipping indication for steering joints
         int lf_clipped_ {0};
         int rf_clipped_ {0};
         int lh_clipped_ {0};
         int rh_clipped_ {0};
         
+        /// Angle threshold to apply wheel rotation before translational velocity
+        double angle_threshold_ {0.5}; 
 
+        // A struct to hold dynamic parameters
+        // set from dynamic_reconfigure server
+        struct DynamicParams
+        {
+            bool update;
+            bool enable_odom_tf;
+            double angle_threshold;
+
+            DynamicParams()
+                : angle_threshold(0.5)
+                , enable_odom_tf(true)
+            {}
+
+            friend std::ostream& operator<<(std::ostream& os, const DynamicParams& params)
+            {
+                os << "DynamicParams:\n"
+                //
+                << "\t\tAngle threshold: "   << params.angle_threshold  << "\n"
+                //
+                << "\t\tPublish frame odom on tf: " << (params.enable_odom_tf?"enabled":"disabled");
+                return os;
+            }
+        };
+
+        realtime_tools::RealtimeBuffer<DynamicParams> dynamic_params_;
+
+        /// Dynamic Reconfigure server
+        typedef dynamic_reconfigure::Server<SwerveControllerConfig> ReconfigureServer;
+        
+        std::shared_ptr<ReconfigureServer> dyn_reconf_server_;
 
     private:
         void timerCallback(const ros::TimerEvent &event);
@@ -201,6 +236,20 @@ namespace swerve_controller
         bool getPhysicalParams(ros::NodeHandle &controller_nh);
 
         void setOdomPubFields(ros::NodeHandle &root_nh, ros::NodeHandle &controller_nh);
+        
+        /**
+         * \brief Callback for dynamic_reconfigure server
+         * \param config The config set from dynamic_reconfigure server
+         * \param level not used at this time.
+         * \see dyn_reconf_server_
+         */
+        void reconfCallback(SwerveControllerConfig& config, uint32_t /*level*/);
+
+        /**
+         * \brief Update the dynamic parameters in the RT loop
+         */
+        void updateDynamicParams();
+    
     };
 
     PLUGINLIB_EXPORT_CLASS(swerve_controller::SwerveController,
