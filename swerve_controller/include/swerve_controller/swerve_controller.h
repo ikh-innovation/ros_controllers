@@ -92,8 +92,8 @@ namespace swerve_controller
         std::string name_;
 
         // Node handle and timer to check for changes in wheel radius
-        ros::NodeHandle param_nh{};
-        ros::Timer param_timer_ ;
+        // ros::NodeHandle param_nh{};
+        // ros::Timer param_timer_ ;
 
         /// Odometry related:
         ros::Duration publish_period_;
@@ -192,10 +192,12 @@ namespace swerve_controller
             bool update;
             bool enable_odom_tf;
             double angle_threshold;
+            double wheel_radius;
 
             DynamicParams()
                 : angle_threshold(0.5)
                 , enable_odom_tf(true)
+                , wheel_radius(0.135)
             {}
 
             friend std::ostream& operator<<(std::ostream& os, const DynamicParams& params)
@@ -204,7 +206,9 @@ namespace swerve_controller
                 //
                 << "\t\tAngle threshold: "   << params.angle_threshold  << "\n"
                 //
-                << "\t\tPublish frame odom on tf: " << (params.enable_odom_tf?"enabled":"disabled");
+                << "\t\tPublish frame odom on tf: " << (params.enable_odom_tf?"enabled":"disabled") << "\n" 
+                //
+                << "\t\tWheel radius: "   << params.wheel_radius  << "\n";
                 return os;
             }
         };
@@ -217,7 +221,7 @@ namespace swerve_controller
         std::shared_ptr<ReconfigureServer> dyn_reconf_server_;
 
     private:
-        void timerCallback(const ros::TimerEvent &event);
+        // void timerCallback(const ros::TimerEvent &event);
 
         void updateOdometry(const ros::Time &time);
 

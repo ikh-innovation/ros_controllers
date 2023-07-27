@@ -66,6 +66,14 @@ namespace swerve_controller
                           const double &lh_steering, const double &rh_steering,
                           const ros::Time &time)
     {
+        // std::cout << "lf_speed" << std::endl;
+        // std::cout << lf_speed << std::endl;
+        // std::cout << "lh_speed" << std::endl;
+        // std::cout << lh_speed << std::endl;
+        // std::cout << "rf_speed" << std::endl;
+        // std::cout << rf_speed << std::endl;
+        // std::cout << "rh_speed" << std::endl;
+        // std::cout << rh_speed << std::endl;
         // Compute velocity vectors in X-Y for each wheel
         const double lf_b = sin(lf_steering) * lf_speed * wheel_radius_;
         const double lf_d = cos(lf_steering) * lf_speed * wheel_radius_;

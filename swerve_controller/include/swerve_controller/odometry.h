@@ -38,6 +38,7 @@
 
 #include <ros/time.h>
 #include <boost/function.hpp>
+#include <iostream>
 
 namespace swerve_controller
 {

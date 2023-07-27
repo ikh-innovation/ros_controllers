@@ -67,8 +67,8 @@ namespace swerve_controller
         std::size_t id = complete_ns.find_last_of("/");
         name_ = complete_ns.substr(id + 1);
         
-        param_nh = controller_nh;
-        param_timer_ = controller_nh.createTimer(ros::Duration(1.0), &SwerveController::timerCallback, this);
+        // param_nh = controller_nh;
+        // param_timer_ = controller_nh.createTimer(ros::Duration(1.0), &SwerveController::timerCallback, this);
 
         // Get wheel joint names from the parameter server
         std::string lf_wheel_name, rf_wheel_name, lh_wheel_name, rh_wheel_name;
@@ -303,6 +303,7 @@ namespace swerve_controller
         DynamicParams dynamic_params;
         dynamic_params.angle_threshold  = angle_threshold_;
         dynamic_params.enable_odom_tf = enable_odom_tf_;
+        dynamic_params.wheel_radius = wheel_radius_;
 
         dynamic_params_.writeFromNonRT(dynamic_params);
 
@@ -310,6 +311,7 @@ namespace swerve_controller
         SwerveControllerConfig config;
         config.angle_threshold  = angle_threshold_;
         config.enable_odom_tf = enable_odom_tf_;
+        config.wheel_radius = wheel_radius_; 
 
         dyn_reconf_server_ = std::make_shared<ReconfigureServer>(controller_nh);
         dyn_reconf_server_->updateConfig(config);
@@ -330,26 +332,28 @@ namespace swerve_controller
         updateCommand(time, period);
     }
 
-    void SwerveController::timerCallback(const ros::TimerEvent& event)
-    {
-        double new_wheel_radius;
-        param_nh.getParamCached("wheel_radius", new_wheel_radius); 
+    // void SwerveController::timerCallback(const ros::TimerEvent& event)
+    // {
+    //     double new_wheel_radius;
+    //     param_nh.getParamCached("wheel_radius", new_wheel_radius); 
 
-        if (new_wheel_radius != wheel_radius_)
-        {
-            wheel_radius_ = new_wheel_radius;
-            ROS_INFO_STREAM_NAMED(name_, "New wheel radius is : " << wheel_radius_ );
-            odometry_.setWheelParams(track_ - 2 * wheel_steering_y_offset_, wheel_radius_, wheel_base_);
-        }
-    }
+    //     if (new_wheel_radius != wheel_radius_)
+    //     {
+    //         wheel_radius_ = new_wheel_radius;
+    //         ROS_INFO_STREAM_NAMED(name_, "New wheel radius is : " << wheel_radius_ );
+    //         odometry_.setWheelParams(track_ - 2 * wheel_steering_y_offset_, wheel_radius_, wheel_base_);
+    //     }
+    // }
 
     void SwerveController::reconfCallback(SwerveControllerConfig& config, uint32_t /*level*/)
     {
         DynamicParams dynamic_params;
         dynamic_params.angle_threshold  = config.angle_threshold;
         dynamic_params.enable_odom_tf = config.enable_odom_tf;
+        dynamic_params.wheel_radius = config.wheel_radius;
         dynamic_params_.writeFromNonRT(dynamic_params);
         ROS_INFO_STREAM_NAMED(name_, "Dynamic Reconfigure:\n" << dynamic_params);
+        odometry_.setWheelParams(track_ - 2 * wheel_steering_y_offset_, config.wheel_radius, wheel_base_);
     }
 
     void SwerveController::updateDynamicParams()
@@ -358,6 +362,7 @@ namespace swerve_controller
         const DynamicParams dynamic_params = *(dynamic_params_.readFromRT());
         angle_threshold_  = dynamic_params.angle_threshold;
         enable_odom_tf_ = dynamic_params.enable_odom_tf;
+        wheel_radius_ = dynamic_params.wheel_radius; 
     }
 
     void SwerveController::starting(const ros::Time &time)
@@ -527,9 +532,9 @@ namespace swerve_controller
                     checkError(lh_steering, lh_current_angle) &&
                     checkError(rh_steering, rh_current_angle))                
                 {
-                    lf_wheel_joint_->setCommand(lf_speed);
+                    lf_wheel_joint_->setCommand(-lf_speed);
                     rf_wheel_joint_->setCommand(rf_speed);
-                    lh_wheel_joint_->setCommand(lh_speed);
+                    lh_wheel_joint_->setCommand(-lh_speed);
                     rh_wheel_joint_->setCommand(rh_speed);
                 }
                 else
