@@ -1,7 +1,8 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2013, PAL Robotics, S.L.
+ *  Copyright (c) 2020, Exobotic
+ *  Copyright (c) 2017, Irstea
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +15,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of the PAL Robotics nor the names of its
+ *   * Neither the name of Exobotic nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -32,34 +33,22 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/*
- * Author: Luca Marchionni
- * Author: Bence Magyar
- * Author: Enrique Fernández
- * Author: Paul Mathieu
- */
-
-#ifndef ODOMETRY_H_
-#define ODOMETRY_H_
+#ifndef SWERVE_CONTROLLER_ODOMETRY_H_
+#define SWERVE_CONTROLLER_ODOMETRY_H_
 
 #include <ros/time.h>
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/rolling_mean.hpp>
 #include <boost/function.hpp>
 
-namespace diff_drive_controller
+namespace swerve_controller
 {
-  namespace bacc = boost::accumulators;
 
-  /**
-   * \brief The Odometry class handles odometry readings
-   * (2D pose and velocity with related timestamp)
-   */
-  class Odometry
-  {
-  public:
-
+/**
+* \brief The Odometry class handles odometry readings
+* (2D pose and velocity with related timestamp)
+*/
+class Odometry
+{
+    public:
     /// Integration function, used to integrate the odometry:
     typedef boost::function<void(double, double)> IntegrationFunction;
 
@@ -69,7 +58,7 @@ namespace diff_drive_controller
      * Value will be set to zero
      * \param velocity_rolling_window_size Rolling window size used to compute the velocity mean
      */
-    Odometry(size_t velocity_rolling_window_size = 10);
+    explicit Odometry(size_t velocity_rolling_window_size = 10);
 
     /**
      * \brief Initialize the odometry
@@ -78,13 +67,22 @@ namespace diff_drive_controller
     void init(const ros::Time &time);
 
     /**
-     * \brief Updates the odometry class with latest wheels position
-     * \param left_pos  Left  wheel position [rad]
-     * \param right_pos Right wheel position [rad]
-     * \param time      Current time
+     * \brief Updates the odometry class with latest wheels and steerings position
+     * \param lf_speed front left wheel vehicle speed [rad/s]
+     * \param rf_speed front right wheel vehicle speed [rad/s]
+     * \param lh_speed rear left wheel vehicle speed [rad/s]
+     * \param rh_speed rear right wheel vehicle speed [rad/s]
+     * \param lf_steering front left steering position [rad]
+     * \param rf_steering front right steering position [rad]
+     * \param lh_steering rear left steering position [rad]
+     * \param rh_steering rear right steering position [rad]
+     * \param time Current time
      * \return true if the odometry is actually updated
      */
-    bool update(double left_pos, double right_pos, const ros::Time &time);
+    bool update(const double& lf_speed, const double& rf_speed, const double& lh_speed,
+                const double& rh_speed, const double& lf_steering, const double& rf_steering,
+                const double& lh_steering, const double& rh_steering, const ros::Time &time);
+
 
     /**
      * \brief Updates the odometry values with the newest values from the previous controller
@@ -94,14 +92,6 @@ namespace diff_drive_controller
      */
     void updateOnSwitch(double new_x, double new_y, double new_yaw);
     
-    /**
-     * \brief Updates the odometry class with latest velocity command
-     * \param linear  Linear velocity [m/s]
-     * \param angular Angular velocity [rad/s]
-     * \param time    Current time
-     */
-    void updateOpenLoop(double linear, double angular, const ros::Time &time);
-
     /**
      * \brief heading getter
      * \return heading [rad]
@@ -130,12 +120,21 @@ namespace diff_drive_controller
     }
 
     /**
-     * \brief linear velocity getter
+     * \brief linear velocity getter along X on the robot base link frame
      * \return linear velocity [m/s]
      */
-    double getLinear() const
+    double getLinearX() const
     {
-      return linear_;
+      return linear_x_;
+    }
+
+    /**
+     * \brief linear velocity getter along Y on the robot base link frame
+     * \return linear velocity [m/s]
+     */
+    double getLinearY() const
+    {
+      return linear_y_;
     }
 
     /**
@@ -149,11 +148,11 @@ namespace diff_drive_controller
 
     /**
      * \brief Sets the wheel parameters: radius and separation
-     * \param wheel_separation   Separation between left and right wheels [m]
-     * \param left_wheel_radius  Left wheel radius [m]
-     * \param right_wheel_radius Right wheel radius [m]
+     * \param steering_track          Seperation between left and right steering joints [m]
+     * \param wheel_radius            Wheel radius [m]
+     * \param wheel_base              Wheel base [m]
      */
-    void setWheelParams(double wheel_separation, double left_wheel_radius, double right_wheel_radius);
+    void setWheelParams(double steering_track, double wheel_radius, double wheel_base);
 
     /**
      * \brief Velocity rolling window size setter
@@ -161,11 +160,14 @@ namespace diff_drive_controller
      */
     void setVelocityRollingWindowSize(size_t velocity_rolling_window_size);
 
-  private:
-
-    /// Rolling mean accumulator and window:
-    typedef bacc::accumulator_set<double, bacc::stats<bacc::tag::rolling_mean> > RollingMeanAcc;
-    typedef bacc::tag::rolling_window RollingWindow;
+    private:
+    /**
+     * \brief Integrates the velocities (linear on x and y and angular)
+     * \param linear_x  Linear  velocity along x of the robot frame  [m] (linear  displacement, i.e. m/s * dt) computed by encoders
+     * \param linear_y  Linear  velocity along y of the robot frame   [m] (linear  displacement, i.e. m/s * dt) computed by encoders
+     * \param angular Angular velocity [rad] (angular displacement, i.e. m/s * dt) computed by encoders
+     */
+    void integrateXY(double linear_x, double linear_y, double angular);
 
     /**
      * \brief Integrates the velocities (linear and angular) using 2nd order Runge-Kutta
@@ -186,38 +188,25 @@ namespace diff_drive_controller
      */
     void resetAccumulators();
 
-    /// Current timestamp:
-    ros::Time timestamp_;
+    // Current timestamp:
+    ros::Time last_update_timestamp_;
 
-    /// Current pose:
+    // Current pose:
     double x_;        //   [m]
     double y_;        //   [m]
     double heading_;  // [rad]
 
-    /// Current velocity:
-    double linear_;  //   [m/s]
-    double angular_; // [rad/s]
+    // Current velocity:
+    double linear_x_, linear_y_;  // [m/s]
+    double angular_;  // [rad/s]
 
-    /// Wheel kinematic parameters [m]:
-    double wheel_separation_;
-    double left_wheel_radius_;
-    double right_wheel_radius_;
+    // Wheel kinematic parameters [m]:
+    double steering_track_;
+    double wheel_steering_y_offset_;
+    double wheel_radius_;
+    double wheel_base_;
+};
 
-    /// Previou wheel position/state [rad]:
-    double left_wheel_old_pos_;
-    double right_wheel_old_pos_;
+}  // namespace swerve_controller
 
-    bool first_time_after_switch_ {false}; 
-
-
-    /// Rolling mean accumulators for the linar and angular velocities:
-    size_t velocity_rolling_window_size_;
-    RollingMeanAcc linear_acc_;
-    RollingMeanAcc angular_acc_;
-
-    /// Integration funcion, used to integrate the odometry:
-    IntegrationFunction integrate_fun_;
-  };
-}
-
-#endif /* ODOMETRY_H_ */
+#endif  // SWERVE_CONTROLLER_ODOMETRY_H_

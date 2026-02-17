@@ -155,6 +155,7 @@ namespace diff_drive_controller{
     , allow_multiple_cmd_vel_publishers_(true)
     , base_frame_id_("base_link")
     , odom_frame_id_("odom")
+    , odom_topic_("odom")
     , enable_odom_tf_(true)
     , wheel_joints_size_(0)
     , publish_cmd_(false)
@@ -246,6 +247,9 @@ namespace diff_drive_controller{
 
     controller_nh.param("odom_frame_id", odom_frame_id_, odom_frame_id_);
     ROS_INFO_STREAM_NAMED(name_, "Odometry frame_id set to " << odom_frame_id_);
+
+    controller_nh.param("odom_topic", odom_topic_, odom_topic_);
+    ROS_INFO_STREAM_NAMED(name_, "Odometry topic set to " << odom_topic_);
 
     controller_nh.param("enable_odom_tf", enable_odom_tf_, enable_odom_tf_);
     ROS_INFO_STREAM_NAMED(name_, "Publishing to tf is " << (enable_odom_tf_?"enabled":"disabled"));
@@ -499,7 +503,12 @@ namespace diff_drive_controller{
   void DiffDriveController::starting(const ros::Time& time)
   {
     brake();
-
+    ROS_INFO_STREAM("Starting diff_drive controller ...");
+    double last_x, last_y, last_yaw;
+    switching_nh.getParam("last_x", last_x);
+    switching_nh.getParam("last_y", last_y);
+    switching_nh.getParam("last_yaw", last_yaw);
+    odometry_.updateOnSwitch(last_x, last_y, last_yaw);
     // Register starting time used to keep fixed rate
     last_state_publish_time_ = time;
     time_previous_ = time;
@@ -509,7 +518,11 @@ namespace diff_drive_controller{
 
   void DiffDriveController::stopping(const ros::Time& /*time*/)
   {
+    ROS_INFO_STREAM("Stopping diff_drive controller ...");
     brake();
+    switching_nh.setParam("last_x", odometry_.getX());
+    switching_nh.setParam("last_y", odometry_.getY());
+    switching_nh.setParam("last_yaw", odometry_.getHeading());
   }
 
   void DiffDriveController::brake()
@@ -545,10 +558,10 @@ namespace diff_drive_controller{
                              << "Lin: "   << command_struct_.lin << ", "
                              << "Stamp: " << command_struct_.stamp);
     }
-    else
-    {
-      ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
-    }
+    // else
+    // {
+    //   ROS_ERROR_NAMED(name_, "Can't accept new commands. Controller is not running.");
+    // }
   }
 
   bool DiffDriveController::getWheelNames(ros::NodeHandle& controller_nh,
@@ -691,7 +704,7 @@ namespace diff_drive_controller{
       ROS_ASSERT(twist_cov_list[i].getType() == XmlRpc::XmlRpcValue::TypeDouble);
 
     // Setup odometry realtime publisher + odom message constant fields
-    odom_pub_.reset(new realtime_tools::RealtimePublisher<nav_msgs::Odometry>(controller_nh, "odom", 100));
+    odom_pub_.reset(new realtime_tools::RealtimePublisher<nav_msgs::Odometry>(controller_nh, odom_topic_, 100));
     odom_pub_->msg_.header.frame_id = odom_frame_id_;
     odom_pub_->msg_.child_frame_id = base_frame_id_;
     odom_pub_->msg_.pose.pose.position.z = 0;

@@ -167,6 +167,9 @@ namespace diff_drive_controller{
     /// Frame to use for odometry and odom tf:
     std::string odom_frame_id_;
 
+    /// Topic to publish odometry:
+    std::string odom_topic_;
+
     /// Whether to publish odometry to tf or not:
     bool enable_odom_tf_;
 
@@ -233,6 +236,9 @@ namespace diff_drive_controller{
     typedef dynamic_reconfigure::Server<DiffDriveControllerConfig> ReconfigureServer;
     
     std::shared_ptr<ReconfigureServer> dyn_reconf_server_;
+
+    // node handle to use when storing odometry values while switching controllers
+    ros::NodeHandle switching_nh; 
 
   private:
     /**

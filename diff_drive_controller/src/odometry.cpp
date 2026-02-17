@@ -75,9 +75,20 @@ namespace diff_drive_controller
 
   bool Odometry::update(double left_pos, double right_pos, const ros::Time &time)
   {
+        
+
     /// Get current wheel joint positions:
     const double left_wheel_cur_pos  = left_pos  * left_wheel_radius_;
     const double right_wheel_cur_pos = right_pos * right_wheel_radius_;
+
+    // If it is the first time after switching, reset old measurements because 
+    // the wheels have turned and there will be a jump in these values
+    if (first_time_after_switch_)
+    {
+      left_wheel_old_pos_  = left_wheel_cur_pos;
+      right_wheel_old_pos_ = right_wheel_cur_pos;
+      first_time_after_switch_ = false;
+    }
 
     /// Estimate velocity of wheels using old and current position:
     const double left_wheel_est_vel  = left_wheel_cur_pos  - left_wheel_old_pos_;
@@ -121,6 +132,14 @@ namespace diff_drive_controller
     const double dt = (time - timestamp_).toSec();
     timestamp_ = time;
     integrate_fun_(linear * dt, angular * dt);
+  }
+
+  void Odometry::updateOnSwitch(double new_x, double new_y, double new_yaw)
+  {
+    x_ = new_x;
+    y_ = new_y;
+    heading_ = new_yaw;
+    first_time_after_switch_ = true;
   }
 
   void Odometry::setWheelParams(double wheel_separation, double left_wheel_radius, double right_wheel_radius)
